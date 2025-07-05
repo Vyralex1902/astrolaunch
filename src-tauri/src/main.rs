@@ -8,72 +8,340 @@ use tauri::{Manager, Window};
 
 #[tauri::command]
 fn set_volume(volume: u8) -> Result<(), String> {
-    println!("Set volume to {}%", volume);
-    // TODO: Implement platform-specific volume setting here
-    Ok(())
+    if volume > 100 {
+        return Err("Volume must be between 0 and 100".into());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!("set volume output volume {}", volume);
+        let status = Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .status()
+            .map_err(|e| e.to_string())?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to set volume on macOS".into())
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let status = Command::new("nircmd.exe")
+            .args(&["setsysvolume", &(volume as u32 * 65535 / 100).to_string()])
+            .status();
+
+        match status {
+            Ok(s) if s.success() => Ok(()),
+            _ => Err("Failed to set volume on Windows; please install nircmd.exe".into()),
+        }
+    }
+}
+
+#[tauri::command]
+fn mute_volume() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        let script = format!("set volume output volume {}", 0);
+        let status = Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .status()
+            .map_err(|e| e.to_string())?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to set volume on macOS".into())
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let status = Command::new("nircmd.exe")
+            .args(&["setsysvolume", &(0 as u32 * 65535 / 100).to_string()])
+            .status();
+
+        match status {
+            Ok(s) if s.success() => Ok(()),
+            _ => Err("Failed to set volume on Windows; please install nircmd.exe".into()),
+        }
+    }
 }
 
 #[tauri::command]
 fn increase_volume(delta: u8) -> Result<(), String> {
-    println!("Increase volume by {}%", delta);
-    // TODO: Implement platform-specific volume increase here
-    Ok(())
+    #[cfg(target_os = "macos")]
+    {
+        let output = Command::new("osascript")
+            .arg("-e")
+            .arg("output volume of (get volume settings)")
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        let current_vol_str = String::from_utf8_lossy(&output.stdout);
+        let current_vol: u8 = current_vol_str.trim().parse().unwrap_or(50);
+        let new_vol = (current_vol.saturating_add(delta)).min(100);
+
+        set_volume(new_vol)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let delta_value = delta as u32 * 65535 / 100;
+        let status = Command::new("nircmd.exe")
+            .args(&["changesysvolume", &delta_value.to_string()])
+            .status();
+
+        match status {
+            Ok(s) if s.success() => Ok(()),
+            _ => Err("Failed to increase volume on Windows; please install nircmd.exe".into()),
+        }
+    }
 }
 
 #[tauri::command]
 fn decrease_volume(delta: u8) -> Result<(), String> {
-    println!("Decrease volume by {}%", delta);
-    // TODO: Implement platform-specific volume decrease here
-    Ok(())
+    #[cfg(target_os = "macos")]
+    {
+        let output = Command::new("osascript")
+            .arg("-e")
+            .arg("output volume of (get volume settings)")
+            .output()
+            .map_err(|e| e.to_string())?;
+
+        let current_vol_str = String::from_utf8_lossy(&output.stdout);
+        let current_vol: u8 = current_vol_str.trim().parse().unwrap_or(50);
+        let new_vol = current_vol.saturating_sub(delta);
+
+        set_volume(new_vol)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let delta_value = delta as u32 * 65535 / 100;
+        let neg_delta = (0u32).wrapping_sub(delta_value);
+
+        let status = Command::new("nircmd.exe")
+            .args(&["changesysvolume", &neg_delta.to_string()])
+            .status();
+
+        match status {
+            Ok(s) if s.success() => Ok(()),
+            _ => Err("Failed to decrease volume on Windows; please install nircmd.exe".into()),
+        }
+    }
 }
 
 #[tauri::command]
 fn set_brightness(brightness: u8) -> Result<(), String> {
-    println!("Set brightness to {}%", brightness);
-    // TODO: Implement platform-specific brightness setting here
-    Ok(())
+    if brightness > 100 {
+        return Err("Brightness must be between 0 and 100".into());
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        let level = brightness as f64 / 100.0;
+        let status = Command::new("brightness")
+            .arg(&level.to_string())
+            .status()
+            .map_err(|e| e.to_string())?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to set brightness on macOS".into())
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let script = format!(
+            "powershell (Get-WmiObject -Namespace root/WMI -Class WmiMonitorBrightnessMethods).WmiSetBrightness(1,{})",
+            brightness
+        );
+
+        let status = Command::new("powershell")
+            .args(&["-Command", &script])
+            .status()
+            .map_err(|e| e.to_string())?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to set brightness on Windows".into())
+        }
+    }
 }
 
 #[tauri::command]
 fn increase_brightness(delta: u8) -> Result<(), String> {
-    println!("Increase brightness by {}%", delta);
-    // TODO: Implement platform-specific brightness increase here
-    Ok(())
+    #[cfg(target_os = "macos")]
+    {
+        let output = Command::new("brightness")
+            .arg("-l")
+            .output()
+            .map_err(|e| e.to_string())?;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let current_level = stdout
+            .lines()
+            .find_map(|line| {
+                if line.contains("brightness") {
+                    line.split_whitespace()
+                        .last()
+                        .and_then(|v| v.parse::<f64>().ok())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0.5);
+
+        let new_level = (current_level + (delta as f64 / 100.0)).min(1.0);
+        set_brightness((new_level * 100.0) as u8)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        Err("Incremental brightness on Windows not implemented".into())
+    }
 }
 
 #[tauri::command]
 fn decrease_brightness(delta: u8) -> Result<(), String> {
-    println!("Decrease brightness by {}%", delta);
-    // TODO: Implement platform-specific brightness decrease here
-    Ok(())
+    #[cfg(target_os = "macos")]
+    {
+        let output = Command::new("brightness")
+            .arg("-l")
+            .output()
+            .map_err(|e| e.to_string())?;
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let current_level = stdout
+            .lines()
+            .find_map(|line| {
+                if line.contains("brightness") {
+                    line.split_whitespace()
+                        .last()
+                        .and_then(|v| v.parse::<f64>().ok())
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(0.5);
+
+        let new_level = (current_level - (delta as f64 / 100.0)).max(0.0);
+        set_brightness((new_level * 100.0) as u8)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        Err("Decremental brightness on Windows not implemented".into())
+    }
 }
 
 #[tauri::command]
 fn media_play() -> Result<(), String> {
-    println!("Play media");
-    // TODO: Implement media play control here
-    Ok(())
+    #[cfg(target_os = "macos")]
+    {
+        let script = r#"tell application "Music" to play"#;
+        let status = Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .status()
+            .map_err(|e| e.to_string())?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to play media on macOS".into())
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let status = Command::new("nircmd.exe")
+            .arg("sendkeypress")
+            .arg("media_play_pause")
+            .status();
+
+        match status {
+            Ok(s) if s.success() => Ok(()),
+            _ => Err("Failed to play media on Windows; please install nircmd.exe".into()),
+        }
+    }
 }
 
 #[tauri::command]
 fn media_pause() -> Result<(), String> {
-    println!("Pause media");
-    // TODO: Implement media pause control here
-    Ok(())
+    media_play()
 }
 
 #[tauri::command]
 fn media_skip() -> Result<(), String> {
-    println!("Skip track");
-    // TODO: Implement media skip control here
-    Ok(())
+    #[cfg(target_os = "macos")]
+    {
+        let script = r#"tell application "Music" to next track"#;
+        let status = Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .status()
+            .map_err(|e| e.to_string())?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to skip media on macOS".into())
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let status = Command::new("nircmd.exe")
+            .arg("sendkeypress")
+            .arg("media_next")
+            .status();
+
+        match status {
+            Ok(s) if s.success() => Ok(()),
+            _ => Err("Failed to skip media on Windows; please install nircmd.exe".into()),
+        }
+    }
 }
 
 #[tauri::command]
 fn media_previous() -> Result<(), String> {
-    println!("Previous track");
-    // TODO: Implement media previous control here
-    Ok(())
+    #[cfg(target_os = "macos")]
+    {
+        let script = r#"tell application "Music" to previous track"#;
+        let status = Command::new("osascript")
+            .arg("-e")
+            .arg(script)
+            .status()
+            .map_err(|e| e.to_string())?;
+
+        if status.success() {
+            Ok(())
+        } else {
+            Err("Failed to go to previous media track on macOS".into())
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let status = Command::new("nircmd.exe")
+            .arg("sendkeypress")
+            .arg("media_prev")
+            .status();
+
+        match status {
+            Ok(s) if s.success() => Ok(()),
+            _ => Err(
+                "Failed to go to previous media track on Windows; please install nircmd.exe".into(),
+            ),
+        }
+    }
 }
 
 #[tauri::command]
@@ -294,6 +562,7 @@ fn main() {
             search_web,
             close_window_command,
             set_volume,
+            mute_volume,
             increase_volume,
             decrease_volume,
             set_brightness,

@@ -136,7 +136,14 @@ export default function App() {
         name: `Set volume to ${number}%`,
         action: () => invoke('set_volume', { volume: number }),
       });
-    } else if (q.startsWith("increase volume") && number !== null) {
+    }
+    else if (q.startsWith("mute")) {
+      cmds.push({
+        name: `Mute volume`,
+        action: () => invoke('mute_volume'),
+      });
+    }
+    else if (q.startsWith("increase volume") && number !== null) {
       cmds.push({
         name: `Increase volume by ${number}%`,
         action: () => invoke('increase_volume', { delta: number }),
