@@ -19,11 +19,62 @@ function isAppInfo(item: SearchResult): item is AppInfo {
   return (item as AppInfo).path !== undefined;
 }
 
+const emojiMap: Record<string, string> = {
+  smile: '😊',
+  laugh: '😂',
+  thumbs_up: '👍',
+  heart: '❤️',
+  fire: '🔥',
+  star: '⭐',
+  party: '🎉',
+  rocket: '🚀',
+  coffee: '☕',
+  sun: '☀️',
+  moon: '🌙',
+  wink: '😉',
+  cry: '😢',
+  angry: '😠',
+  kiss: '😘',
+  blush: '😊',
+  thinking: '🤔',
+  clap: '👏',
+  ok_hand: '👌',
+  eyes: '👀',
+  raised_hands: '🙌',
+  muscle: '💪',
+  poop: '💩',
+  ghost: '👻',
+  broken_heart: '💔',
+  dizzy: '😵',
+  heart_eyes: '😍',
+  sleeping: '😴',
+  sunglasses: '😎',
+  confetti_ball: '🎊',
+  balloon: '🎈',
+  cake: '🍰',
+  beer: '🍺',
+  pizza: '🍕',
+  soccer: '⚽',
+  basketball: '🏀',
+  guitar: '🎸',
+  microphone: '🎤',
+  camera: '📷',
+  phone: '📱',
+  laptop: '💻',
+  book: '📚',
+  moneybag: '💰',
+  warning: '⚠️',
+  check_mark: '✅',
+  cross_mark: '❌',
+  thumbs_down: '👎',
+};
+
 export default function App() {
   const [apps, setApps] = useState<AppInfo[]>([]);
   const [query, setQuery] = useState('');
   const [filtered, setFiltered] = useState<SearchResult[]>([]);
-  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [emojiMode, setEmojiMode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [calcResult, setCalcResult] = useState<string | null>(null);
@@ -53,10 +104,112 @@ export default function App() {
     }
   }, [query]);
 
+  // Get emojis filtered by query in emojiMode
+  function getFilteredEmojis(query: string): BuiltInCommand[] {
+    const q = query.toLowerCase();
+    return Object.entries(emojiMap)
+      .filter(([name]) => name.includes(q))
+      .map(([name, emoji]) => ({
+        name: `${emoji} ${name}`,
+        action: () => {
+          navigator.clipboard.writeText(emoji).catch(console.error);
+          setEmojiMode(false);
+          setQuery('');
+        },
+      }));
+  }
+
+  // Multimedia commands parser and built-in
+  function getMultimediaCommands(query: string): BuiltInCommand[] {
+    const q = query.toLowerCase();
+
+    // Regex to extract number before %
+    const percentMatch = q.match(/(\d{1,3})\s*%/);
+    const number = percentMatch ? Math.min(Math.max(parseInt(percentMatch[1]), 0), 100) : null;
+
+    const cmds: BuiltInCommand[] = [];
+
+    if (!q) return cmds;
+
+    if (q.startsWith("set volume") && number !== null) {
+      cmds.push({
+        name: `Set volume to ${number}%`,
+        action: () => invoke('set_volume', { volume: number }),
+      });
+    } else if (q.startsWith("increase volume") && number !== null) {
+      cmds.push({
+        name: `Increase volume by ${number}%`,
+        action: () => invoke('increase_volume', { delta: number }),
+      });
+    } else if (q.startsWith("decrease volume") && number !== null) {
+      cmds.push({
+        name: `Decrease volume by ${number}%`,
+        action: () => invoke('decrease_volume', { delta: number }),
+      });
+    }
+
+    if (q.startsWith("set brightness") && number !== null) {
+      cmds.push({
+        name: `Set brightness to ${number}%`,
+        action: () => invoke('set_brightness', { brightness: number }),
+      });
+    } else if (q.startsWith("increase brightness") && number !== null) {
+      cmds.push({
+        name: `Increase brightness by ${number}%`,
+        action: () => invoke('increase_brightness', { delta: number }),
+      });
+    } else if (q.startsWith("decrease brightness") && number !== null) {
+      cmds.push({
+        name: `Decrease brightness by ${number}%`,
+        action: () => invoke('decrease_brightness', { delta: number }),
+      });
+    }
+
+    if (q.startsWith("play")) {
+      cmds.push({ name: "Play media", action: () => invoke('media_play') });
+    }
+    if (q.startsWith("pause")) {
+      cmds.push({ name: "Pause media", action: () => invoke('media_pause') });
+    }
+    if (q.startsWith("skip")) {
+      cmds.push({ name: "Skip track", action: () => invoke('media_skip') });
+    }
+    if (q.startsWith("previous")) {
+      cmds.push({ name: "Previous track", action: () => invoke('media_previous') });
+    }
+
+    return cmds;
+  }
+
+  // Get built-in commands depending on emojiMode
   function getBuiltInCommands(query: string): BuiltInCommand[] {
     const q = query.trim();
 
-    const builtIn: BuiltInCommand[] = [];
+    if (emojiMode) {
+      // Only emojis when in emoji mode
+      return getFilteredEmojis(q);
+    }
+
+    // Not in emoji mode, show "emoji" command to enter emoji mode
+    const builtIn: BuiltInCommand[] = [
+      {
+        name: 'emoji',
+        action: () => {
+          setEmojiMode(true);
+          setQuery('');
+          setSelectedIndex(-1);
+        },
+      },
+    ];
+
+    // Insert multimedia commands only if query includes '%' or contains trigger words
+    if (!emojiMode) {
+      const multimediaCommands = getMultimediaCommands(q);
+      const triggers = ['set', 'increase', 'decrease', 'play', 'pause', 'skip', 'previous'];
+      if (q.includes('%') || triggers.some(t => q.includes(t))) {
+        builtIn.push(...multimediaCommands);
+      }
+    }
 
     if (['minimize', 'min'].includes(q.toLowerCase())) {
       builtIn.push({ name: 'Minimize Window', action: () => invoke('minimize_window') });
@@ -102,15 +255,50 @@ export default function App() {
   }
 
   useEffect(() => {
-    const builtInMatches = getBuiltInCommands(query);
-    const appMatches = apps.filter((app) =>
-      app.name.toLowerCase().includes(query.toLowerCase())
+    const trimmedQuery = query.trim();
+    const builtInMatches = getBuiltInCommands(trimmedQuery);
+    const appMatches = emojiMode ? [] : apps.filter((app) =>
+      app.name.toLowerCase().includes(trimmedQuery.toLowerCase())
     );
-    setFiltered([...builtInMatches, ...appMatches]);
-    setSelectedIndex(0);
-  }, [query, apps, calcResult]);
+    const newFiltered = [...builtInMatches, ...appMatches];
+    setFiltered(newFiltered);
+    setSelectedIndex(newFiltered.length > 0 ? 0 : -1);
+  }, [query, apps, calcResult, emojiMode]);
 
   function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === 'Escape') {
+      if (!emojiMode) {
+        invoke('close_window_command').catch(console.error);
+        e.preventDefault();
+        return;
+      }
+    }
+
+    if (filtered.length === 0) {
+      return;
+    }
+
+    if (emojiMode) {
+      if (e.key === 'Backspace' && query === '') {
+        // Exit emoji mode on backspace with empty input
+        setEmojiMode(false);
+        setSelectedIndex(-1);
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'Enter') {
+        if (selectedIndex === -1) return;
+        const selected = filtered[selectedIndex];
+        if (!selected) return;
+        // In emoji mode, pressing enter copies emoji to clipboard and exits emoji mode
+        if ('action' in selected) {
+          selected.action();
+          e.preventDefault();
+        }
+        return;
+      }
+    }
+
     if (e.key === 'ArrowDown') {
       setSelectedIndex((i) => (i + 1) % filtered.length);
       e.preventDefault();
@@ -118,15 +306,27 @@ export default function App() {
       setSelectedIndex((i) => (i - 1 + filtered.length) % filtered.length);
       e.preventDefault();
     } else if (e.key === 'Enter') {
-      e.preventDefault();
+      if (selectedIndex === -1) return;
       const selected = filtered[selectedIndex];
-      if (selected) {
-        if (isAppInfo(selected)) {
-          invoke('launch_app', { appName: selected.path }).catch(console.error);
-        } else {
-          selected.action();
+      if (!selected) return;
+
+      if (emojiMode) {
+        // If selected is "emoji" command, enter emoji mode and clear input
+        if (selected.name === 'emoji') {
+          setEmojiMode(true);
+          setQuery('');
+          setSelectedIndex(-1);
+          e.preventDefault();
+          return;
         }
       }
+
+      if (isAppInfo(selected)) {
+        invoke('launch_app', { appName: selected.path }).catch(console.error);
+      } else {
+        selected.action();
+      }
+      e.preventDefault();
     }
   }
 
@@ -149,7 +349,7 @@ export default function App() {
       <input
         ref={inputRef}
         type="text"
-        placeholder="Type a command or search..."
+        placeholder={emojiMode ? 'Type emoji name...' : 'Type a command or search...'}
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={onKeyDown}

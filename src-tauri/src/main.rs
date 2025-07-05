@@ -1,12 +1,80 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-use std::process::Command;
-use tauri::Manager;
-use urlencoding::encode; // Manager trait provides get_window and other window management methods
-
 use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
+use tauri::{Manager, Window};
+
+#[tauri::command]
+fn set_volume(volume: u8) -> Result<(), String> {
+    println!("Set volume to {}%", volume);
+    // TODO: Implement platform-specific volume setting here
+    Ok(())
+}
+
+#[tauri::command]
+fn increase_volume(delta: u8) -> Result<(), String> {
+    println!("Increase volume by {}%", delta);
+    // TODO: Implement platform-specific volume increase here
+    Ok(())
+}
+
+#[tauri::command]
+fn decrease_volume(delta: u8) -> Result<(), String> {
+    println!("Decrease volume by {}%", delta);
+    // TODO: Implement platform-specific volume decrease here
+    Ok(())
+}
+
+#[tauri::command]
+fn set_brightness(brightness: u8) -> Result<(), String> {
+    println!("Set brightness to {}%", brightness);
+    // TODO: Implement platform-specific brightness setting here
+    Ok(())
+}
+
+#[tauri::command]
+fn increase_brightness(delta: u8) -> Result<(), String> {
+    println!("Increase brightness by {}%", delta);
+    // TODO: Implement platform-specific brightness increase here
+    Ok(())
+}
+
+#[tauri::command]
+fn decrease_brightness(delta: u8) -> Result<(), String> {
+    println!("Decrease brightness by {}%", delta);
+    // TODO: Implement platform-specific brightness decrease here
+    Ok(())
+}
+
+#[tauri::command]
+fn media_play() -> Result<(), String> {
+    println!("Play media");
+    // TODO: Implement media play control here
+    Ok(())
+}
+
+#[tauri::command]
+fn media_pause() -> Result<(), String> {
+    println!("Pause media");
+    // TODO: Implement media pause control here
+    Ok(())
+}
+
+#[tauri::command]
+fn media_skip() -> Result<(), String> {
+    println!("Skip track");
+    // TODO: Implement media skip control here
+    Ok(())
+}
+
+#[tauri::command]
+fn media_previous() -> Result<(), String> {
+    println!("Previous track");
+    // TODO: Implement media previous control here
+    Ok(())
+}
 
 #[tauri::command]
 fn minimize_window(app: tauri::AppHandle) {
@@ -45,6 +113,11 @@ fn close_window(app: tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {
         let _ = window.close();
     }
+}
+
+#[tauri::command]
+fn close_window_command(window: tauri::Window) -> Result<(), String> {
+    window.close().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -198,6 +271,16 @@ fn list_apps() -> Result<Vec<AppInfo>, String> {
     Err("Unsupported OS".to_string())
 }
 
+fn show_and_focus_window(window: &Window) {
+    if let Ok(is_minimized) = window.is_minimized() {
+        if is_minimized {
+            let _ = window.unminimize();
+        }
+    }
+    let _ = window.show();
+    let _ = window.set_focus();
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -208,7 +291,19 @@ fn main() {
             resize_window_80,
             close_window,
             calculate_expression,
-            search_web
+            search_web,
+            close_window_command,
+            set_volume,
+            increase_volume,
+            decrease_volume,
+            set_brightness,
+            increase_brightness,
+            decrease_brightness,
+            media_play,
+            media_pause,
+            media_skip,
+            media_previous,
+            greet
         ])
         .run(tauri::generate_context!())
         .expect("error while running");
