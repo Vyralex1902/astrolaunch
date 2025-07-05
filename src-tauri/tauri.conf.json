@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "astrolaunch",
+  "version": "0.1.0",
+  "identifier": "com.astrolaunch.app",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "AstroLaunch",
+    "width": 660,
+    "height": 400,
+    "transparent": true,
+    "decorations": false,
+    "resizable": false,
+    "focus": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  },
+  "plugins": {
+  "spotlight": {
+    "windows": [{
+      "label": "main",
+      "shortcut": "Option+Space",
+      "macos_window_level": 20
+    }],
+    "global_close_shortcut": "Escape"
+  }
+}
+}
