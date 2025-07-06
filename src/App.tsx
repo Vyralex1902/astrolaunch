@@ -6,6 +6,13 @@ type AppInfo = {
   path: string;
 };
 
+import webIcon from './assets/white-web.png';
+import iVolIcon from './assets/white-volup.png';
+import dVolIcon from './assets/white-voldown.png';
+import mVolIcon from './assets/white-mute.png';
+import emojiIcon from './assets/white-emoji.png';
+import youIcon from './assets/youtube.png';
+
 type BuiltInCommand = {
   name: string;
   action: () => void;
@@ -191,43 +198,45 @@ export default function App() {
   // Get built-in commands depending on emojiMode
   function getBuiltInCommands(query: string): BuiltInCommand[] {
     const q = query.trim();
+    const lowerQ = q.toLowerCase();
 
     if (emojiMode) {
       // Only emojis when in emoji mode
       return getFilteredEmojis(q);
     }
 
-    // Not in emoji mode, show "emoji" command to enter emoji mode
-    const builtIn: BuiltInCommand[] = [
-      {
-        name: 'emoji',
+    // Only add "emoji" built-in command if query starts with "emoji" or "em"
+    const builtIn: BuiltInCommand[] = [];
+    if (lowerQ.startsWith('emoji') || lowerQ.startsWith('em')) {
+      builtIn.push({
+        name: 'Emoji',
         action: () => {
           setEmojiMode(true);
           setQuery('');
           setSelectedIndex(-1);
         },
-      },
-    ];
+      });
+    }
 
     // Insert multimedia commands only if query includes '%' or contains trigger words
     if (!emojiMode) {
       const multimediaCommands = getMultimediaCommands(q);
-      const triggers = ['set', 'increase', 'decrease', 'play', 'pause', 'skip', 'previous'];
-      if (q.includes('%') || triggers.some(t => q.includes(t))) {
+      const triggers = ['set', 'increase', 'decrease', 'play', 'pause', 'skip', 'previous', 'mute'];
+      if (lowerQ.includes('%') || triggers.some(t => lowerQ.includes(t))) {
         builtIn.push(...multimediaCommands);
       }
     }
 
-    if (['minimize', 'min'].includes(q.toLowerCase())) {
+    if (['minimize', 'min'].includes(lowerQ)) {
       builtIn.push({ name: 'Minimize Window', action: () => invoke('minimize_window') });
     }
-    if (['maximize', 'max'].includes(q.toLowerCase())) {
+    if (['maximize', 'max'].includes(lowerQ)) {
       builtIn.push({ name: 'Maximize Window', action: () => invoke('maximize_window') });
     }
-    if (['resize', 'resize 80'].includes(q.toLowerCase())) {
+    if (['resize', 'resize 80'].includes(lowerQ)) {
       builtIn.push({ name: 'Resize to 80%', action: () => invoke('resize_window_80') });
     }
-    if (['close', 'quit'].includes(q.toLowerCase())) {
+    if (['close', 'quit'].includes(lowerQ)) {
       builtIn.push({ name: 'Close Window', action: () => invoke('close_window') });
     }
     if (calcResult !== null && q !== calcResult) {
@@ -242,7 +251,7 @@ export default function App() {
       });
     }
 
-    if (q.toLowerCase().startsWith('yt:')) {
+    if (lowerQ.startsWith('yt:')) {
       const term = q.substring(3).trim();
       if (term.length > 0) {
         builtIn.push({
@@ -267,7 +276,7 @@ export default function App() {
     const appMatches = emojiMode ? [] : apps.filter((app) =>
       app.name.toLowerCase().includes(trimmedQuery.toLowerCase())
     );
-    const newFiltered = [...builtInMatches, ...appMatches];
+    const newFiltered = [...builtInMatches, ...appMatches].slice(0, 8);
     setFiltered(newFiltered);
     setSelectedIndex(newFiltered.length > 0 ? 0 : -1);
   }, [query, apps, calcResult, emojiMode]);
@@ -337,6 +346,29 @@ export default function App() {
     }
   }
 
+  function getIconForItem(name: string): string | null {
+    const lowerName = name.toLowerCase();
+    if (lowerName.includes('search the web')) {
+      return webIcon;
+    }
+    else if (lowerName.includes('increase volume')) {
+      return iVolIcon;
+    }
+    else if (lowerName.includes('decrease volume')) {
+      return dVolIcon;
+    }
+    else if (lowerName.includes('mute volume')) {
+      return mVolIcon;
+    }
+    else if (lowerName.includes('emoji')) {
+      return emojiIcon;
+    }
+    else if (lowerName.includes('search youtube')) {
+      return youIcon;
+    }
+    return null;
+  }
+
   return (
     <div
       style={{
@@ -400,9 +432,18 @@ export default function App() {
                 borderRadius: 8,
                 cursor: 'pointer',
                 userSelect: 'none',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
               }}
             >
-              {item.name}
+              {(() => {
+                const icon = getIconForItem(item.name);
+                if (icon) {
+                  return <><img src={icon} alt="" style={{ width: 20, height: 20 }} />{item.name}</>;
+                }
+                return item.name;
+              })()}
             </li>
           ))}
         </ul>
