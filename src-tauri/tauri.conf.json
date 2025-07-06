@@ -13,12 +13,17 @@
     "windows": [
       {
         "title": "AstroLaunch",
-    "width": 660,
-    "height": 400,
-    "transparent": true,
-    "decorations": false,
+        "label": "main",
+    "fullscreen": false,
     "resizable": false,
-    "focus": false
+    "decorations": false,
+    "transparent": true,
+    "alwaysOnTop": true,
+    "center": true,
+    "width": 800,
+    "height": 300,
+    "skipTaskbar": true,
+    "visible": true
       }
     ],
     "security": {
@@ -35,15 +40,5 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
-  },
-  "plugins": {
-  "spotlight": {
-    "windows": [{
-      "label": "main",
-      "shortcut": "Option+Space",
-      "macos_window_level": 20
-    }],
-    "global_close_shortcut": "Escape"
   }
-}
 }

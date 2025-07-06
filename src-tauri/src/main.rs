@@ -574,6 +574,11 @@ fn main() {
             media_previous,
             greet
         ])
+        .setup(move |app| {
+            // Set activation poicy to Accessory to prevent the app icon from showing on the dock
+            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running");
 }
