@@ -1,5 +1,6 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+use serde::Deserialize;
 use serde::Serialize;
 use std::fs;
 use std::path::PathBuf;
@@ -578,12 +579,6 @@ fn search_web(query: &str) -> Result<(), String> {
     Ok(())
 }
 
-// Your existing greet command or remove if you want
-#[tauri::command]
-fn greet(name: &str) -> String {
-    format!("Hello, {}! Welcome to AstroLaunch 🚀", name)
-}
-
 // Command to launch an app by name or path
 #[tauri::command]
 fn launch_app(app_name: &str) -> Result<String, String> {
@@ -706,6 +701,46 @@ fn show_and_focus_window(window: &Window) {
     let _ = window.set_focus();
 }
 
+#[derive(Deserialize)]
+struct TranslationResponse {
+    #[serde(rename = "translatedText")]
+    translated_text: String,
+}
+
+#[tauri::command]
+async fn translate_sentence(
+    query: String,
+    lang_from: String,
+    lang_to: String,
+) -> Result<String, String> {
+    let client = reqwest::Client::new();
+    let url = "https://translate.googleapis.com/translate_a/single";
+
+    let params = [
+        ("client", "gtx"),
+        ("sl", &lang_from),
+        ("tl", &lang_to),
+        ("dt", "t"),
+        ("q", &query),
+    ];
+
+    let res = client
+        .get(url)
+        .query(&params)
+        .send()
+        .await
+        .map_err(|e| e.to_string())?;
+
+    let json: serde_json::Value = res.json().await.map_err(|e| e.to_string())?;
+
+    let translated = json[0][0][0]
+        .as_str()
+        .ok_or("Failed to extract translation")?
+        .to_string();
+
+    Ok(translated)
+}
+
 fn main() {
     // Spawn clipboard polling thread to track clipboard changes automatically
     let clipboard_history = &CLIPBOARD_HISTORY;
@@ -765,7 +800,8 @@ fn main() {
             get_clipboard_history,
             clear_clipboard_history,
             open_link,
-            get_snippets
+            get_snippets,
+            translate_sentence
         ])
         .setup(move |app| {
             // Set activation poicy to Accessory to prevent the app icon from showing on the dock

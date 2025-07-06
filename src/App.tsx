@@ -108,6 +108,13 @@ export default function App() {
   // Snippet state
   const [snippets, setSnippets] = useState<{ name: string; content: string }[]>([]);
   const [snippetMode, setSnippetMode] = useState(false);
+  // Translation mode state
+  const [translateMode, setTranslateMode] = useState(false);
+  const [translateStep, setTranslateStep] = useState<0 | 1 | 2>(0);
+  const [langFrom, setLangFrom] = useState('');
+  const [langTo, setLangTo] = useState('');
+  const [translatedText, setTranslatedText] = useState('');
+
   // Fetch clipboard history from backend
   async function fetchClipboardHistory() {
     try {
@@ -283,6 +290,15 @@ export default function App() {
           setSelectedIndex(-1);
         },
       },
+      {
+        name: 'Translate',
+        action: () => {
+          setTranslateMode(true);
+          setTranslateStep(0);
+          setQuery('');
+          setSelectedIndex(-1);
+        },
+      },
       // Add multimedia commands, window commands, and others below:
     ];
 
@@ -395,6 +411,58 @@ export default function App() {
   }
 
   useEffect(() => {
+    if (translateMode) {
+      if (translateStep === 0) {
+        setFiltered([
+          {
+            name: `Enter source language (or type "auto")`,
+            action: () => { },
+          },
+        ]);
+      } else if (translateStep === 1) {
+        setFiltered([
+          {
+            name: `Enter target language`,
+            action: () => { },
+          },
+        ]);
+      } else if (translateStep === 2) {
+        if (query.trim() !== '') {
+          invoke<string>('translate_sentence', {
+            query,
+            langFrom: langFrom || 'auto',
+            langTo,
+          })
+            .then((result) => {
+              setTranslatedText(result);
+              setFiltered([
+                {
+                  name: `Translation: ${result}`,
+                  action: () => {
+                    navigator.clipboard.writeText(result);
+                    setTranslateMode(false);
+                    setQuery('');
+                    setTranslatedText('');
+                    setTranslateStep(0);
+                  },
+                },
+              ]);
+              setSelectedIndex(0);
+            })
+            .catch(() => {
+              setFiltered([
+                {
+                  name: 'Translation failed',
+                  action: () => { },
+                },
+              ]);
+            });
+        } else {
+          setFiltered([]);
+        }
+      }
+      return;
+    }
     if (clipboardMode) {
       // Filter clipboard items by full query string
       const filteredClipboardCommands: BuiltInCommand[] = clipboardItems
@@ -437,9 +505,55 @@ export default function App() {
       setFiltered(newFiltered);
       setSelectedIndex(newFiltered.length > 0 ? 0 : -1);
     }
-  }, [query, apps, calcResult, emojiMode, fileSearchResults, clipboardMode, clipboardItems, snippets, snippetMode]);
+  }, [query, apps, calcResult, emojiMode, fileSearchResults, clipboardMode, clipboardItems, snippets, snippetMode, translateMode, translateStep, langFrom, langTo]);
 
   function onKeyDown(e: React.KeyboardEvent) {
+    if (translateMode) {
+      if (e.key === 'Backspace' && query.trim() === '') {
+        if (translateStep === 0) {
+          setTranslateMode(false);
+          setQuery('');
+          setSelectedIndex(-1);
+        } else if (translateStep === 1) {
+          setTranslateStep(0);
+          setQuery(langFrom);
+          setLangFrom('');
+          setSelectedIndex(-1);
+        } else if (translateStep === 2) {
+          setTranslateStep(1);
+          setQuery(langTo);
+          setLangTo('');
+          setSelectedIndex(-1);
+        }
+        e.preventDefault();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        if (query.trim() === '') {
+          setTranslateMode(false);
+          setTranslateStep(0);
+          setQuery('');
+          setSelectedIndex(-1);
+          return;
+        }
+
+        if (translateStep === 0) {
+          setLangFrom(query.trim().toLowerCase());
+          setTranslateStep(1);
+          setQuery('');
+          setSelectedIndex(-1);
+        } else if (translateStep === 1) {
+          setLangTo(query.trim().toLowerCase());
+          setTranslateStep(2);
+          setQuery('');
+          setSelectedIndex(-1);
+        }
+        e.preventDefault();
+        return;
+      }
+    }
+
     if (clipboardMode && e.key === 'Backspace' && query.trim() === '') {
       setClipboardMode(false);
       setClipboardItems([]);
@@ -587,7 +701,19 @@ export default function App() {
       <input
         ref={inputRef}
         type="text"
-        placeholder={clipboardMode ? 'Search clipboard history...' : emojiMode ? 'Type emoji name...' : 'Type a command or search...'}
+        placeholder={
+          clipboardMode
+            ? 'Search clipboard history...'
+            : emojiMode
+              ? 'Type emoji name...'
+              : translateMode
+                ? translateStep === 0
+                  ? 'Enter the language to translate from...'
+                  : translateStep === 1
+                    ? 'Enter the language to translate to...'
+                    : 'Type sentence to translate...'
+                : 'Type a command or search...'
+        }
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onKeyDown={onKeyDown}
