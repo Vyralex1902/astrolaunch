@@ -105,6 +105,9 @@ export default function App() {
 
   const [clipboardMode, setClipboardMode] = useState(false);
   const [clipboardItems, setClipboardItems] = useState<string[]>([]);
+  // Snippet state
+  const [snippets, setSnippets] = useState<{ name: string; content: string }[]>([]);
+  const [snippetMode, setSnippetMode] = useState(false);
   // Fetch clipboard history from backend
   async function fetchClipboardHistory() {
     try {
@@ -123,6 +126,13 @@ export default function App() {
     invoke<AppInfo[]>('list_apps')
       .then(setApps)
       .catch((err) => console.error('Failed to fetch apps:', err));
+    // Fetch snippets
+    invoke<[string, string][]>('get_snippets')
+      .then((data) => {
+        const formatted = data.map(([name, content]) => ({ name, content }));
+        setSnippets(formatted);
+      })
+      .catch((err) => console.error('Failed to fetch snippets:', err));
   }, []);
 
   useEffect(() => {
@@ -238,6 +248,7 @@ export default function App() {
     const q = query.trim().toLowerCase();
 
     if (clipboardMode) return [];
+    if (snippetMode) return [];
 
     if (emojiMode) {
       return getFilteredEmojis(q);
@@ -248,9 +259,19 @@ export default function App() {
       {
         name: 'Clipboard history',
         action: () => {
+          if (clipboardItems.length === 0) return;
           setClipboardMode(true);
           setQuery('');
           fetchClipboardHistory();
+          setSelectedIndex(0);
+        },
+      },
+      {
+        name: 'Snippets',
+        action: () => {
+          if (snippets.length === 0) return;
+          setSnippetMode(true);
+          setQuery('');
           setSelectedIndex(0);
         },
       },
@@ -322,6 +343,19 @@ export default function App() {
       });
     }
 
+    // Snippet insert command
+    snippets.forEach(({ name, content }) => {
+      if (name.toLowerCase().includes(q)) {
+        allCommands.push({
+          name: `Insert snippet "${name}"`,
+          action: () => {
+            navigator.clipboard.writeText(content).catch(console.error);
+            setQuery('');
+          },
+        });
+      }
+    });
+
     // File search command
     if (q.includes('search file')) {
       const term = query.toLowerCase().split('search file')[1]?.trim();
@@ -376,7 +410,23 @@ export default function App() {
 
       setFiltered(filteredClipboardCommands);
       setSelectedIndex(filteredClipboardCommands.length > 0 ? 0 : -1);
-    } else {
+    }
+    else if (snippetMode) {
+      const filteredSnippetCommands: BuiltInCommand[] = snippets
+        .filter(snippet => snippet.name.toLowerCase().includes(query.toLowerCase()))
+        .map(snippet => ({
+          name: `Insert snippet "${snippet.name}"`,
+          action: () => {
+            navigator.clipboard.writeText(snippet.content).catch(console.error);
+            setSnippetMode(false);
+            setQuery('');
+          },
+        }));
+
+      setFiltered(filteredSnippetCommands);
+      setSelectedIndex(filteredSnippetCommands.length > 0 ? 0 : -1);
+    }
+    else {
       const trimmedQuery = query.trim();
       const builtInMatches = getBuiltInCommands(trimmedQuery);
       const appMatches = emojiMode ? [] : apps.filter(app =>
@@ -387,12 +437,17 @@ export default function App() {
       setFiltered(newFiltered);
       setSelectedIndex(newFiltered.length > 0 ? 0 : -1);
     }
-  }, [query, apps, calcResult, emojiMode, fileSearchResults, clipboardMode, clipboardItems]);
+  }, [query, apps, calcResult, emojiMode, fileSearchResults, clipboardMode, clipboardItems, snippets, snippetMode]);
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (clipboardMode && e.key === 'Backspace' && query.trim() === '') {
       setClipboardMode(false);
       setClipboardItems([]);
+      e.preventDefault();
+      return;
+    }
+    if (snippetMode && e.key === 'Backspace' && query.trim() === '') {
+      setSnippetMode(false);
       e.preventDefault();
       return;
     }
@@ -447,25 +502,23 @@ export default function App() {
       const selected = filtered[selectedIndex];
       if (!selected) return;
 
-      if (emojiMode) {
-        // If selected is "emoji" command, enter emoji mode and clear input
-        if (selected.name === 'emoji') {
-          setEmojiMode(true);
-          setQuery('');
-          setSelectedIndex(-1);
-          e.preventDefault();
-          return;
-        }
+      // Prevent processing if "Snippets" or "Clipboard history" are selected but have no data
+      if (
+        (selected.name === 'Snippets' && snippets.length === 0) ||
+        (selected.name === 'Clipboard history' && clipboardItems.length === 0)
+      ) {
+        e.preventDefault();
+        return;
       }
 
-      if (isAppInfo(selected)) {
-        invoke('launch_app', { appName: selected.path }).catch(console.error);
-      } else if (isFileSearchItem(selected)) {
-        Promise.resolve(selected.action()).catch(console.error);
-      } else {
-        Promise.resolve(selected.action()).catch(console.error);
+      // General handler for items with an action function
+      if ('action' in selected && typeof selected.action === 'function') {
+        selected.action();
+        e.preventDefault();
+        return;
       }
-      e.preventDefault();
+
+      // (Old built-in handling removed)
     }
   }
 
