@@ -6,6 +6,134 @@ use std::path::PathBuf;
 use std::process::Command;
 use tauri::{Manager, Window};
 
+use std::path::Path;
+use strsim;
+use walkdir::WalkDir;
+
+use arboard::Clipboard;
+use once_cell::sync::Lazy;
+use std::sync::Mutex;
+use std::{thread, time::Duration};
+
+#[tauri::command]
+fn open_link(url: &str) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(&["/C", "start", "", url])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+// Clipboard history (text only)
+struct ClipboardHistory {
+    items: Vec<String>,
+}
+
+impl ClipboardHistory {
+    fn new() -> Self {
+        ClipboardHistory { items: Vec::new() }
+    }
+
+    fn add_text(&mut self, text: String) {
+        if self.items.last().map_or(true, |last| last != &text) {
+            self.items.push(text);
+            if self.items.len() > 10 {
+                self.items.remove(0);
+            }
+        }
+    }
+
+    fn clear(&mut self) {
+        self.items.clear();
+    }
+}
+
+static CLIPBOARD_HISTORY: Lazy<Mutex<ClipboardHistory>> =
+    Lazy::new(|| Mutex::new(ClipboardHistory::new()));
+
+#[tauri::command]
+fn record_clipboard() -> Result<(), String> {
+    let mut clipboard = Clipboard::new().map_err(|e| e.to_string())?;
+    let mut history = CLIPBOARD_HISTORY.lock().unwrap();
+
+    if let Ok(text) = clipboard.get_text() {
+        if !text.trim().is_empty() {
+            history.add_text(text);
+            return Ok(());
+        }
+    }
+
+    Err("Clipboard empty or unsupported format".into())
+}
+
+#[tauri::command]
+fn get_clipboard_history() -> Vec<String> {
+    let history = CLIPBOARD_HISTORY.lock().unwrap();
+    history.items.clone()
+}
+
+#[tauri::command]
+fn clear_clipboard_history() {
+    let mut history = CLIPBOARD_HISTORY.lock().unwrap();
+    history.clear();
+}
+
+#[tauri::command]
+fn search_files(query: &str) -> Result<Vec<String>, String> {
+    use std::cmp::Reverse;
+    use std::collections::BinaryHeap;
+    use std::fs;
+
+    #[cfg(target_os = "macos")]
+    let search_paths = vec![Path::new("/")];
+
+    #[cfg(target_os = "windows")]
+    let search_paths = vec![Path::new("C:\\"), Path::new("D:\\"), Path::new("E:\\")];
+
+    let mut heap = BinaryHeap::new();
+    let mut seen = std::collections::HashSet::new();
+
+    for root in search_paths {
+        let walker = WalkDir::new(root).into_iter();
+        for entry in walker.filter_map(|e| e.ok()).take(100_000) {
+            let path = entry.path();
+            if path.is_file() {
+                if let Some(name) = Path::new(path).file_name().and_then(|n| n.to_str()) {
+                    let score = strsim::jaro_winkler(query, name);
+                    if score > 0.6 && seen.insert(path.to_path_buf()) {
+                        heap.push(Reverse((
+                            (score * 10000.0) as i32,
+                            path.display().to_string(),
+                        )));
+                        if heap.len() > 8 {
+                            heap.pop();
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let mut results: Vec<_> = heap
+        .into_sorted_vec()
+        .into_iter()
+        .map(|Reverse((_, path))| path)
+        .collect();
+
+    results.reverse(); // highest score first
+    Ok(results)
+}
+
 #[tauri::command]
 fn set_volume(volume: u8) -> Result<(), String> {
     if volume > 100 {
@@ -550,6 +678,37 @@ fn show_and_focus_window(window: &Window) {
 }
 
 fn main() {
+    // Spawn clipboard polling thread to track clipboard changes automatically
+    let clipboard_history = &CLIPBOARD_HISTORY;
+    std::thread::spawn(move || {
+        let mut last_text = String::new();
+        let mut clipboard = match Clipboard::new() {
+            Ok(c) => c,
+            Err(e) => {
+                eprintln!("Failed to initialize clipboard for polling: {}", e);
+                return;
+            }
+        };
+
+        loop {
+            std::thread::sleep(Duration::from_millis(500));
+
+            let current_text = clipboard.get_text();
+            match current_text {
+                Ok(text) => {
+                    if !text.trim().is_empty() && text != last_text {
+                        let mut history = clipboard_history.lock().unwrap();
+                        history.add_text(text.clone());
+                        last_text = text;
+                    }
+                }
+                Err(_) => {
+                    // Clipboard read failed, ignore and retry
+                    continue;
+                }
+            }
+        }
+    });
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             launch_app,
@@ -572,7 +731,11 @@ fn main() {
             media_pause,
             media_skip,
             media_previous,
-            greet
+            search_files,
+            record_clipboard,
+            get_clipboard_history,
+            clear_clipboard_history,
+            open_link
         ])
         .setup(move |app| {
             // Set activation poicy to Accessory to prevent the app icon from showing on the dock
