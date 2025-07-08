@@ -3,7 +3,7 @@
 A spotlight-like app. The objective will be to compete with raycast.
 ## This is a cross-platform (windows and macos) Tauri v2 + React app.
 
-### Current features (last updated on 6th July):
+### Current features (last updated on 8th July):
 - Calculate expression
 - Search web
 - Launch app
