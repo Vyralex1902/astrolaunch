@@ -316,6 +316,7 @@ export default function App() {
   const [filtered, setFiltered] = useState<SearchResult[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const [emojiMode, setEmojiMode] = useState(false);
+  const [specialCharsMode, setSpecialCharsMode] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const [calcResult, setCalcResult] = useState<string | null>(null);
@@ -394,6 +395,20 @@ export default function App() {
         action: () => {
           navigator.clipboard.writeText(emoji).catch(console.error);
           setEmojiMode(false);
+          setQuery('');
+        },
+      }));
+  }
+
+  function getFilteredSpecialCharacters(query: string): BuiltInCommand[] {
+    const q = query.toLowerCase();
+    return Object.entries(specialChars)
+      .filter(([name]) => name.includes(q))
+      .map(([name, specialChar]) => ({
+        name: `${specialChar} ${name}`,
+        action: () => {
+          navigator.clipboard.writeText(specialChar).catch(console.error);
+          setSpecialCharsMode(false);
           setQuery('');
         },
       }));
@@ -478,6 +493,9 @@ export default function App() {
     if (emojiMode) {
       return getFilteredEmojis(q);
     }
+    if (specialCharsMode) {
+      return getFilteredSpecialCharacters(q);
+    }
 
     // Base static built-in commands
     const allCommands: BuiltInCommand[] = [
@@ -504,6 +522,14 @@ export default function App() {
         name: 'Emoji',
         action: () => {
           setEmojiMode(true);
+          setQuery('');
+          setSelectedIndex(-1);
+        },
+      },
+      {
+        name: 'Special Characters',
+        action: () => {
+          setSpecialCharsMode(true);
           setQuery('');
           setSelectedIndex(-1);
         },
@@ -715,7 +741,7 @@ export default function App() {
     else {
       const trimmedQuery = query.trim();
       const builtInMatches = getBuiltInCommands(trimmedQuery);
-      const appMatches = emojiMode ? [] : apps.filter(app =>
+      const appMatches = emojiMode ? specialCharsMode ? [] : apps.filter(app =>
         app.name.toLowerCase().includes(trimmedQuery.toLowerCase())
       );
       const combined = [...builtInMatches, ...appMatches, ...fileSearchResults];
@@ -723,7 +749,7 @@ export default function App() {
       setFiltered(newFiltered);
       setSelectedIndex(newFiltered.length > 0 ? 0 : -1);
     }
-  }, [query, apps, calcResult, emojiMode, fileSearchResults, clipboardMode, clipboardItems, snippets, snippetMode, translateMode, translateStep, langFrom, langTo]);
+  }, [query, apps, calcResult, emojiMode, specialCharsMode, fileSearchResults, clipboardMode, clipboardItems, snippets, snippetMode, translateMode, translateStep, langFrom, langTo]);
 
   function onKeyDown(e: React.KeyboardEvent) {
     if (translateMode) {
@@ -791,6 +817,10 @@ export default function App() {
         invoke('close_window_command').catch(console.error);
         e.preventDefault();
         return;
+      } else if (!specialCharsMode) {
+        invoke('close_window_command').catch(console.error);
+        e.preventDefault();
+        return;
       }
     }
 
@@ -808,6 +838,30 @@ export default function App() {
       }
       if (e.key === 'Enter') {
         console.log('Enter key pressed in emojiMode');
+        console.log('selectedIndex:', selectedIndex);
+        console.log('filtered:', filtered);
+        if (selectedIndex === -1) return;
+        const selected = filtered[selectedIndex];
+        console.log('Selected item:', selected);
+        if (!selected) return;
+        // In emoji mode, pressing enter copies emoji to clipboard and exits emoji mode
+        if ('action' in selected) {
+          selected.action();
+          e.preventDefault();
+        }
+        return;
+      }
+    }
+    if (specialCharsMode) {
+      if (e.key === 'Backspace' && query === '') {
+        // Exit emoji mode on backspace with empty input
+        setSpecialCharsMode(false);
+        setSelectedIndex(-1);
+        e.preventDefault();
+        return;
+      }
+      if (e.key === 'Enter') {
+        console.log('Enter key pressed in specialcharsMode');
         console.log('selectedIndex:', selectedIndex);
         console.log('filtered:', filtered);
         if (selectedIndex === -1) return;
@@ -874,6 +928,8 @@ export default function App() {
     }
     else if (lowerName.includes('emoji')) {
       return emojiIcon;
+    } else if (lowerName.includes('special characters')) {
+      return specialCharsIcon;
     }
     else if (lowerName.includes('search youtube')) {
       return youIcon;
@@ -924,13 +980,15 @@ export default function App() {
             ? 'Search clipboard history...'
             : emojiMode
               ? 'Type emoji name...'
-              : translateMode
-                ? translateStep === 0
-                  ? 'Enter the language to translate from...'
-                  : translateStep === 1
-                    ? 'Enter the language to translate to...'
-                    : 'Type sentence to translate...'
-                : 'Type a command or search...'
+              : specialCharsMode
+                ? 'Type special character name...'
+                : translateMode
+                  ? translateStep === 0
+                    ? 'Enter the language to translate from...'
+                    : translateStep === 1
+                      ? 'Enter the language to translate to...'
+                      : 'Type sentence to translate...'
+                  : 'Type a command or search...'
         }
         value={query}
         onChange={(e) => setQuery(e.target.value)}
