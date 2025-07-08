@@ -4,32 +4,36 @@ A spotlight-like app. The objective will be to compete with raycast.
 ## This is a cross-platform (windows and macos) Tauri v2 + React app.
 
 ### Current features (last updated on 6th July):
-- launch_app,
-- list_apps,
-- minimize_window,
-- maximize_window,
-- resize_window_80,
-- close_window,
-- calculate_expression,
-- search_web,
-- close_window_command,
-- set_volume,
-- mute_volume,
-- increase_volume,
-- decrease_volume,
-- set_brightness,
-- increase_brightness,
-- decrease_brightness,
-- media_play,
-- media_pause,
-- media_skip,
-- media_previous,
-- search_files,
-- record_clipboard,
-- get_clipboard_history,
-- clear_clipboard_history,
-- open_link,
-- get_snippets
+- Calculate expression
+- Search web
+- Launch app
+- List apps
+- Minimize window
+- Maximize window
+- Almost maximize window
+- Close window
+- Close window via command
+- Set brightness
+- Increase brightness
+- Decrease brightness
+- Set volume
+- Mute volume
+- Increase volume
+- Decrease volume
+- Play media
+- Pause media
+- Skip media
+- Previous media
+- Search files
+- Get snippets
+- Record clipboard
+- Get clipboard history
+- Clear clipboard history
+- Open link
+- Translate sentence
+- Get current time
+- Run timer
+- Run alarm
 #### Some of these still don't work.
 
 ### Any contribution is accepted.
