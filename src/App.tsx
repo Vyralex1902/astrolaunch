@@ -11,6 +11,7 @@ import iVolIcon from './assets/white-volup.png';
 import dVolIcon from './assets/white-voldown.png';
 import mVolIcon from './assets/white-mute.png';
 import emojiIcon from './assets/white-emoji.png';
+import specialCharsIcon from './assets/white-specialc.png';
 import youIcon from './assets/youtube.png';
 import playIcon from './assets/white-play.png';
 import nextIcon from './assets/white-next.png';
@@ -741,7 +742,7 @@ export default function App() {
     else {
       const trimmedQuery = query.trim();
       const builtInMatches = getBuiltInCommands(trimmedQuery);
-      const appMatches = emojiMode ? specialCharsMode ? [] : apps.filter(app =>
+      const appMatches = (emojiMode || specialCharsMode) ? [] : apps.filter(app =>
         app.name.toLowerCase().includes(trimmedQuery.toLowerCase())
       );
       const combined = [...builtInMatches, ...appMatches, ...fileSearchResults];

@@ -17,6 +17,8 @@ use std::sync::Mutex;
 use std::{thread, time::Duration};
 
 mod appsLib;
+mod clockLib;
+mod liveDataLib;
 mod mediaLib;
 mod searchFilesLib;
 mod snippetsLib;
@@ -235,7 +237,10 @@ fn main() {
             get_clipboard_history,
             clear_clipboard_history,
             open_link,
-            translate_sentence
+            translate_sentence,
+            liveDataLib::get_current_time,
+            clockLib::runTimer,
+            clockLib::runAlarm,
         ])
         .setup(move |app| {
             // Set activation poicy to Accessory to prevent the app icon from showing on the dock
