@@ -1,7 +1,7 @@
 # AstroLaunch
 
 A spotlight-like app. The objective will be to compete with raycast.
-## This is a cross-platform (windows and macos) Tauri v2 + React app.
+** This is a cross-platform (windows and macos) Tauri v2 + React app.**
 
 ### Current features (last updated on 8th July):
 - Calculate expression
@@ -36,4 +36,4 @@ A spotlight-like app. The objective will be to compete with raycast.
 - Run alarm
 #### Some of these still don't work.
 
-### Any contribution is accepted.
+*Any contribution is accepted.*
