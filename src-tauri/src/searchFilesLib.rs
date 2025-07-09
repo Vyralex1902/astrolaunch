@@ -1,3 +1,7 @@
+use std::path::Path;
+use strsim;
+use walkdir::WalkDir;
+
 #[tauri::command]
 pub fn search_files(query: &str) -> Result<Vec<String>, String> {
     use std::cmp::Reverse;

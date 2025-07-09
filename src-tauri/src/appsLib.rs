@@ -1,3 +1,8 @@
+use crate::AppInfo;
+use std::fs;
+use std::path::PathBuf;
+use std::process::Command;
+
 #[tauri::command]
 pub fn list_apps() -> Result<Vec<AppInfo>, String> {
     #[cfg(target_os = "macos")]

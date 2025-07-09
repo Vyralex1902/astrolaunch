@@ -1,3 +1,5 @@
+use std::process::Command;
+
 #[tauri::command]
 pub fn set_brightness(brightness: u8) -> Result<(), String> {
     if brightness > 100 {

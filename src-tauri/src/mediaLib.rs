@@ -1,3 +1,5 @@
+use std::process::Command;
+
 #[tauri::command]
 pub fn media_play() -> Result<(), String> {
     #[cfg(target_os = "macos")]

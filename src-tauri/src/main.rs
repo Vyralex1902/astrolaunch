@@ -2,14 +2,6 @@
 
 use serde::Deserialize;
 use serde::Serialize;
-use std::fs;
-use std::path::PathBuf;
-use std::process::Command;
-use tauri::{Manager, Window};
-
-use std::path::Path;
-use strsim;
-use walkdir::WalkDir;
 
 use arboard::Clipboard;
 use once_cell::sync::Lazy;

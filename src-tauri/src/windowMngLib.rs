@@ -1,3 +1,5 @@
+use tauri::Manager;
+
 #[tauri::command]
 pub fn minimize_window(app: tauri::AppHandle) {
     if let Some(window) = app.get_webview_window("main") {

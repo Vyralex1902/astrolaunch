@@ -4,8 +4,7 @@ use std::{thread, time::Duration};
 #[cfg(target_os = "macos")]
 pub fn send_notification(title: &str, message: &str) {
     use mac_notification_sys::*;
-    let bundle = get_bundle_identifier_or_default("com.apple.Terminal");
-    let _ = send_notification(title, &Some(message.into()), &None, &bundle);
+    let _ = send_notification(title, None, message, None);
 }
 
 #[cfg(target_os = "windows")]
