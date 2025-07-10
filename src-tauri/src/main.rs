@@ -242,6 +242,16 @@ fn main() {
                 .body("AstroLaunch is now running!")
                 .show()
                 .unwrap();
+
+            // let win = app.get_window("main").unwrap();
+
+            // #[cfg(target_os = "macos")]
+            // win.set_decorations(false)?;
+
+            // // Remove shadow (macOS-specific)
+            // #[cfg(target_os = "macos")]
+            // win.set_shadow(false)?;
+
             // Set activation poicy to Accessory to prevent the app icon from showing on the dock
             #[cfg(target_os = "macos")]
             {

@@ -335,6 +335,11 @@ export default function App() {
   const [langTo, setLangTo] = useState('');
   const [translatedText, setTranslatedText] = useState('');
 
+  //TODO: REMOVE AFTER TESTING **********************************************************************************************************************************************************************
+  localStorage.removeItem('usage_emoji')
+  localStorage.removeItem('usage_special')
+
+
   // Fetch clipboard history from backend
   async function fetchClipboardHistory() {
     try {
@@ -345,8 +350,6 @@ export default function App() {
       setClipboardItems([]);
     }
   }
-
-
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -389,30 +392,94 @@ export default function App() {
   // Get emojis filtered by query in emojiMode
   function getFilteredEmojis(query: string): BuiltInCommand[] {
     const q = query.toLowerCase();
-    return Object.entries(emojiMap)
-      .filter(([name]) => name.includes(q))
+    const entries = Object.entries(emojiMap);
+
+    const topUsed = getTopUsed('emoji');
+    const topItems: BuiltInCommand[] = topUsed
+      .map(name => {
+        const emoji = emojiMap[name];
+        if (!emoji) return null;
+        return {
+          name: `${emoji} ${name}`,
+          action: () => {
+            navigator.clipboard.writeText(emoji).catch(console.error);
+            recordUsage(name, 'emoji');
+            setEmojiMode(false);
+            setQuery('');
+          },
+        };
+      })
+      .filter(Boolean) as BuiltInCommand[];
+
+    const filtered = entries
+      .filter(([name]) => q === '' || name.includes(q))
       .map(([name, emoji]) => ({
         name: `${emoji} ${name}`,
         action: () => {
           navigator.clipboard.writeText(emoji).catch(console.error);
+          recordUsage(name, 'emoji');
           setEmojiMode(false);
           setQuery('');
         },
       }));
+
+    // If query is empty, show top items first (without duplicates)
+    if (q === '') {
+      const seen = new Set(topUsed);
+      const rest = filtered.filter(item => {
+        const key = item.name.split(' ')[1];
+        return !seen.has(key);
+      });
+      return [...topItems, ...rest];
+    }
+
+    return filtered;
   }
+
 
   function getFilteredSpecialCharacters(query: string): BuiltInCommand[] {
     const q = query.toLowerCase();
-    return Object.entries(specialChars)
-      .filter(([name]) => name.includes(q))
-      .map(([name, specialChar]) => ({
-        name: `${specialChar} ${name}`,
+    const entries = Object.entries(specialChars);
+
+    const topUsed = getTopUsed('special');
+    const topItems: BuiltInCommand[] = topUsed
+      .map(name => {
+        const char = specialChars[name];
+        if (!char) return null;
+        return {
+          name: `${char} ${name}`,
+          action: () => {
+            navigator.clipboard.writeText(char).catch(console.error);
+            recordUsage(name, 'special');
+            setSpecialCharsMode(false);
+            setQuery('');
+          },
+        };
+      })
+      .filter(Boolean) as BuiltInCommand[];
+
+    const filtered = entries
+      .filter(([name]) => q === '' || name.includes(q))
+      .map(([name, char]) => ({
+        name: `${char} ${name}`,
         action: () => {
-          navigator.clipboard.writeText(specialChar).catch(console.error);
+          navigator.clipboard.writeText(char).catch(console.error);
+          recordUsage(name, 'special');
           setSpecialCharsMode(false);
           setQuery('');
         },
       }));
+
+    if (q === '') {
+      const seen = new Set(topUsed);
+      const rest = filtered.filter(item => {
+        const key = item.name.split(' ')[1];
+        return !seen.has(key);
+      });
+      return [...topItems, ...rest];
+    }
+
+    return filtered;
   }
 
   // Multimedia commands parser and built-in
@@ -741,12 +808,19 @@ export default function App() {
     }
     else {
       const trimmedQuery = query.trim();
-      const builtInMatches = getBuiltInCommands(trimmedQuery);
+      const builtInMatches =
+        emojiMode ? getFilteredEmojis(trimmedQuery)
+          : specialCharsMode ? getFilteredSpecialCharacters(trimmedQuery)
+            : getBuiltInCommands(trimmedQuery);
+
       const appMatches = (emojiMode || specialCharsMode) ? [] : apps.filter(app =>
         app.name.toLowerCase().includes(trimmedQuery.toLowerCase())
       );
       const combined = [...builtInMatches, ...appMatches, ...fileSearchResults];
-      const newFiltered = combined.slice(0, 8);
+      let newFiltered = combined;
+      if (!emojiMode && !specialCharsMode) {
+        newFiltered = combined.slice(0, 8);
+      }
       setFiltered(newFiltered);
       setSelectedIndex(newFiltered.length > 0 ? 0 : -1);
     }
@@ -909,6 +983,22 @@ export default function App() {
     }
   }
 
+  function recordUsage(key: string, type: 'emoji' | 'special') {
+    const storageKey = `usage_${type}`;
+    const usage = JSON.parse(localStorage.getItem(storageKey) || '{}');
+    usage[key] = (usage[key] || 0) + 1;
+    localStorage.setItem(storageKey, JSON.stringify(usage));
+  }
+
+  function getTopUsed(type: 'emoji' | 'special', count = 4): string[] {
+    const usage = JSON.parse(localStorage.getItem(`usage_${type}`) || '{}');
+    return Object.entries(usage)
+      .sort((a: any, b: any) => b[1] - a[1])
+      .slice(0, count)
+      .map(([name]) => name);
+  }
+
+
   function getIconForItem(name: string): string | null {
     const lowerName = name.toLowerCase();
     if (lowerName.includes('search the web')) {
@@ -1008,7 +1098,7 @@ export default function App() {
       />
 
 
-      {query.length > 0 && filtered.length > 0 && (
+      {(filtered.length > 0 && (query.length > 0 || emojiMode || specialCharsMode)) && (
         <ul
           style={{
             listStyle: 'none',
@@ -1016,6 +1106,7 @@ export default function App() {
             margin: 0,
             overflowY: 'auto',
             flexGrow: 1,
+            maxHeight: '240px',
           }}
         >
           {filtered.map((item, i) => (
@@ -1060,9 +1151,9 @@ export default function App() {
         </ul>
       )}
 
-      {query.length > 0 && filtered.length === 0 && (
+      {filtered.length === 0 && (query.length > 0 || emojiMode || specialCharsMode) && (
         <div style={{ color: 'gray', fontStyle: 'italic', padding: 10 }}>
-          No apps found.
+          No results found.
         </div>
       )}
     </div>
