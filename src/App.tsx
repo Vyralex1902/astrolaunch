@@ -1098,7 +1098,7 @@ export default function App() {
       />
 
 
-      {(filtered.length > 0 && (query.length > 0 || emojiMode || specialCharsMode)) && (
+      {(filtered.length > 0 && (query.length > 0 || emojiMode || clipboardMode || specialCharsMode)) && (
         <ul
           style={{
             listStyle: 'none',
@@ -1151,7 +1151,7 @@ export default function App() {
         </ul>
       )}
 
-      {filtered.length === 0 && (query.length > 0 || emojiMode || specialCharsMode) && (
+      {filtered.length === 0 && (query.length > 0 || emojiMode || clipboardMode || specialCharsMode) && (
         <div style={{ color: 'gray', fontStyle: 'italic', padding: 10 }}>
           No results found.
         </div>
