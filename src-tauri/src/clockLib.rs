@@ -1,5 +1,6 @@
 use chrono::{Local, NaiveTime};
 use std::{thread, time::Duration};
+// use tauri_plugin_notification::NotificationExt;
 
 #[cfg(target_os = "macos")]
 pub fn send_notification(title: &str, message: &str) {
@@ -7,18 +8,20 @@ pub fn send_notification(title: &str, message: &str) {
     let _ = send_notification(title, None, message, None);
 }
 
-#[cfg(target_os = "windows")]
-pub fn send_notification(title: &str, message: &str) {
-    use windows_notifications::{Toast, ToastBuilder};
-    let toast = Toast::new(ToastBuilder::new(title).text1(message));
-    let _ = toast.show();
-}
+// #[cfg(target_os = "windows")]
+// pub fn send_notification(title: &str, message: &str) {
+//     send_custom_notification(title, message, tauri::AppHandle::default());
+// }
 
-#[cfg(target_os = "linux")]
-pub fn send_notification(title: &str, message: &str) {
-    use notify_rust::Notification;
-    let _ = Notification::new().summary(title).body(message).show();
-}
+// #[tauri::command]
+// fn send_custom_notification(title: string, message: string, app: AppHandle) {
+//     let _ = app
+//         .notification()
+//         .builder()
+//         .title("Hello from function")
+//         .body("This was called outside main()")
+//         .show();
+// }
 
 #[cfg(not(any(target_os = "macos", target_os = "windows", target_os = "linux")))]
 pub fn send_notification(_title: &str, _message: &str) {
@@ -29,7 +32,7 @@ pub fn start_timer(minutes: u64) {
     println!("⏳ Starting timer for {} minute(s)...", minutes);
     thread::sleep(Duration::from_secs(minutes * 60));
     println!("⏰ Time's up!");
-    send_notification("Timer", "Time's up!");
+    // send_notification("Timer", "Time's up!");
 }
 
 pub fn set_alarm(target_time: NaiveTime) {
@@ -38,7 +41,7 @@ pub fn set_alarm(target_time: NaiveTime) {
         let now = Local::now().time();
         if now >= target_time {
             println!("⏰ Alarm triggered at {}", now);
-            send_notification("Alarm", &format!("It's {}", now.format("%H:%M")));
+            // send_notification("Alarm", &format!("It's {}", now.format("%H:%M")));
             break;
         }
         thread::sleep(Duration::from_secs(30));
@@ -61,10 +64,10 @@ pub fn run_timer_alarm(command: &str, value: &str) {
 }
 
 #[tauri::command]
-pub fn runTimer(value: &str) {
+pub fn run_timer(value: &str) {
     run_timer_alarm("timer", value);
 }
 #[tauri::command]
-pub fn runAlarm(value: &str) {
+pub fn run_alarm(value: &str) {
     run_timer_alarm("alarm", value);
 }

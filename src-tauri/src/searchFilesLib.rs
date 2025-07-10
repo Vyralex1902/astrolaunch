@@ -6,7 +6,6 @@ use walkdir::WalkDir;
 pub fn search_files(query: &str) -> Result<Vec<String>, String> {
     use std::cmp::Reverse;
     use std::collections::BinaryHeap;
-    use std::fs;
 
     #[cfg(target_os = "macos")]
     let search_paths = vec![Path::new("/")];

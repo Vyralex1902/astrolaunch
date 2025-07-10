@@ -7,6 +7,7 @@ use arboard::Clipboard;
 use once_cell::sync::Lazy;
 use std::sync::Mutex;
 use std::{thread, time::Duration};
+use tauri_plugin_notification::NotificationExt;
 
 mod appsLib;
 mod clockLib;
@@ -231,14 +232,24 @@ fn main() {
             open_link,
             translate_sentence,
             liveDataLib::get_current_time,
-            clockLib::runTimer,
-            clockLib::runAlarm,
+            clockLib::run_timer,
+            clockLib::run_alarm,
         ])
         .setup(move |app| {
+            app.notification()
+                .builder()
+                .title("AstroLaunch On")
+                .body("AstroLaunch is now running!")
+                .show()
+                .unwrap();
             // Set activation poicy to Accessory to prevent the app icon from showing on the dock
-            app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            #[cfg(target_os = "macos")]
+            {
+                app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
             Ok(())
         })
+        .plugin(tauri_plugin_notification::init())
         .run(tauri::generate_context!())
         .expect("error while running");
 }
