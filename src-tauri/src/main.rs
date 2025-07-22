@@ -14,6 +14,7 @@ mod clockLib;
 mod liveDataLib;
 mod mediaLib;
 mod searchFilesLib;
+mod settings;
 mod snippetsLib;
 mod systemManagementLib;
 mod windowMngLib;
@@ -170,6 +171,21 @@ async fn translate_sentence(
     Ok(translated)
 }
 
+#[tauri::command]
+fn settings_get_autostart(app: tauri::AppHandle) -> bool {
+    settings::is_autostart_enabled(&app)
+}
+
+#[tauri::command]
+fn settings_toggle_autostart(app: tauri::AppHandle) -> Result<(), String> {
+    if settings::is_autostart_enabled(&app) {
+        settings::disable_autostart(&app);
+    } else {
+        settings::enable_autostart(&app);
+    }
+    Ok(())
+}
+
 fn main() {
     // Spawn clipboard polling thread to track clipboard changes automatically
     let clipboard_history = &CLIPBOARD_HISTORY;
@@ -202,7 +218,13 @@ fn main() {
             }
         }
     });
+
+    use tauri_plugin_autostart::MacosLauncher;
     tauri::Builder::default()
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--flag1", "--flag2"]),
+        ))
         .invoke_handler(tauri::generate_handler![
             calculate_expression,
             search_web,
@@ -234,6 +256,8 @@ fn main() {
             liveDataLib::get_current_time,
             clockLib::run_timer,
             clockLib::run_alarm,
+            settings_get_autostart,
+            settings_toggle_autostart,
         ])
         .setup(move |app| {
             app.notification()

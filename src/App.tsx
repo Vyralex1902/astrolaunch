@@ -671,6 +671,20 @@ export default function App() {
       });
     }
 
+    // Settings - autostart commands
+    if (query.startsWith('toggle') && !query.includes('autostart') && !query.includes('start')) {
+      allCommands.push({
+        name: `Toggle autostart`,
+        action: () => invoke('settings_toggle_autostart', {}).catch(console.error),
+      });
+    }
+    else if (q.startsWith('toggle autostart') || q.startsWith('toggle start')) {
+      allCommands.push({
+        name: `Toggle autostart`,
+        action: () => invoke('settings_toggle_autostart', {}).catch(console.error),
+      });
+    }
+
     // Snippet insert command
     snippets.forEach(({ name, content }) => {
       if (name.toLowerCase().includes(q)) {
@@ -1050,7 +1064,7 @@ export default function App() {
   return (
     <div
       style={{
-        backgroundColor: 'rgba(30, 30, 30, 0.85)',
+        backgroundColor: 'rgba(30, 30, 30, 0.92)',
         color: 'white',
         fontFamily: 'system-ui, sans-serif',
         borderRadius: 12,

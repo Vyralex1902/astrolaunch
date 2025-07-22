@@ -14,21 +14,22 @@
       {
         "title": "AstroLaunch",
         "label": "main",
-    "fullscreen": false,
-    "resizable": false,
-    "decorations": false,
-    "transparent": true,
-    "alwaysOnTop": true,
-    "center": true,
-    "width": 800,
-    "height": 300,
-    "skipTaskbar": true,
-    "visible": true
+        "fullscreen": false,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
+        "alwaysOnTop": true,
+        "center": true,
+        "width": 800,
+        "height": 300,
+        "skipTaskbar": true,
+        "visible": true
       }
     ],
     "security": {
       "csp": null
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,
