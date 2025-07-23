@@ -9,6 +9,7 @@
     "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
+  
   "app": {
     "windows": [
       {
@@ -41,5 +42,13 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ]
+  }
+  ,
+  "plugins": {
+    "shell": {
+      "permissions": {
+        "all": true
+      }
+    }
   }
 }

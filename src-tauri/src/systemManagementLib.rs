@@ -104,3 +104,56 @@ pub fn decrease_brightness(delta: u8) -> Result<(), String> {
         Err("Decremental brightness on Windows not implemented".into())
     }
 }
+
+#[tauri::command]
+pub fn restart_system() {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("osascript")
+            .args(&["-e", "tell app \"System Events\" to restart"])
+            .spawn();
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("shutdown")
+            .args(&["/r", "/t", "0"])
+            .spawn();
+    }
+}
+
+#[tauri::command]
+pub fn shutdown_system() {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new("osascript")
+            .args(&["-e", "tell app \"System Events\" to shut down"])
+            .spawn();
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("shutdown")
+            .args(&["/s", "/t", "0"])
+            .spawn();
+    }
+}
+
+#[tauri::command]
+pub fn lock_system() {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = std::process::Command::new(
+            "/System/Library/CoreServices/Menu Extras/User.menu/Contents/Resources/CGSession",
+        )
+        .arg("-suspend")
+        .spawn();
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let _ = std::process::Command::new("rundll32")
+            .args(&["user32.dll,LockWorkStation"])
+            .spawn();
+    }
+}

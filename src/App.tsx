@@ -685,6 +685,28 @@ export default function App() {
       });
     }
 
+    // System restart command 
+    if (q.startsWith('restart') || q.startsWith('reboot')) {
+      allCommands.push({
+        name: `Restart system`,
+        action: () => invoke('restart_system', {}).catch(console.error),
+      });
+    }
+    // System shutdown command 
+    if (q.startsWith('shutdown') || q.startsWith('power off')) {
+      allCommands.push({
+        name: `Shutdown system`,
+        action: () => invoke('shutdown_system', {}).catch(console.error),
+      });
+    }
+    // System lock command 
+    if (q.startsWith('lock') || q.startsWith('disconnect')) {
+      allCommands.push({
+        name: `Lock system (disconnect)`,
+        action: () => invoke('lock_system', {}).catch(console.error),
+      });
+    }
+
     // Snippet insert command
     snippets.forEach(({ name, content }) => {
       if (name.toLowerCase().includes(q)) {

@@ -221,10 +221,12 @@ fn main() {
 
     use tauri_plugin_autostart::MacosLauncher;
     tauri::Builder::default()
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec!["--flag1", "--flag2"]),
         ))
+        .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             calculate_expression,
             search_web,
@@ -238,6 +240,9 @@ fn main() {
             systemManagementLib::set_brightness,
             systemManagementLib::increase_brightness,
             systemManagementLib::decrease_brightness,
+            systemManagementLib::restart_system,
+            systemManagementLib::shutdown_system,
+            systemManagementLib::lock_system,
             mediaLib::set_volume,
             mediaLib::mute_volume,
             mediaLib::increase_volume,
