@@ -186,6 +186,23 @@ fn settings_toggle_autostart(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn run_macos_shortcut(name: &str) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("shortcuts")
+            .args(&["run", name])
+            .output()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("This command only works on macOS.".into())
+    }
+}
+
 fn main() {
     // Spawn clipboard polling thread to track clipboard changes automatically
     let clipboard_history = &CLIPBOARD_HISTORY;
@@ -243,6 +260,7 @@ fn main() {
             systemManagementLib::restart_system,
             systemManagementLib::shutdown_system,
             systemManagementLib::lock_system,
+            systemManagementLib::empty_trash,
             mediaLib::set_volume,
             mediaLib::mute_volume,
             mediaLib::increase_volume,
@@ -263,6 +281,7 @@ fn main() {
             clockLib::run_alarm,
             settings_get_autostart,
             settings_toggle_autostart,
+            run_macos_shortcut,
         ])
         .setup(move |app| {
             app.notification()
@@ -271,6 +290,9 @@ fn main() {
                 .body("AstroLaunch is now running!")
                 .show()
                 .unwrap();
+
+            let app_handle = app.handle();
+            windowMngLib::show_and_center_window(app_handle.clone());
 
             // let win = app.get_window("main").unwrap();
 

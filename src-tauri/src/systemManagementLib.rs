@@ -157,3 +157,20 @@ pub fn lock_system() {
             .spawn();
     }
 }
+
+#[tauri::command]
+pub fn empty_trash() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("osascript")
+            .arg("-e")
+            .arg("tell application \"Finder\" to empty the trash")
+            .output()
+            .map_err(|e| e.to_string())?;
+        Ok(())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("This command only works on macOS.".into())
+    }
+}

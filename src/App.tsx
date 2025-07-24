@@ -621,21 +621,21 @@ export default function App() {
     }
 
     // Window commands
-    if (q.includes('minimize') || q.includes('min')) {
+    else if (q.includes('minimize') || q.includes('min')) {
       allCommands.push({ name: 'Minimize Window', action: () => invoke('minimize_window') });
     }
-    if (q.includes('maximize') || q.includes('max')) {
+    else if (q.includes('maximize') || q.includes('max')) {
       allCommands.push({ name: 'Maximize Window', action: () => invoke('maximize_window') });
     }
-    if (q.includes('resize') || q.includes('resize 80')) {
+    else if (q.includes('resize') || q.includes('resize 80')) {
       allCommands.push({ name: 'Resize to 80%', action: () => invoke('resize_window_80') });
     }
-    if (q.includes('close') || q.includes('quit')) {
+    else if (q.includes('close') || q.includes('quit')) {
       allCommands.push({ name: 'Close Window', action: () => invoke('close_window') });
     }
 
     // Calculator result command
-    if (calcResult !== null && q !== calcResult.toLowerCase()) {
+    else if (calcResult !== null && q !== calcResult.toLowerCase()) {
       allCommands.push({
         name: `Calculate: ${query} = ${calcResult}`,
         action: () => {
@@ -648,7 +648,7 @@ export default function App() {
     }
 
     // YouTube search
-    if (q.startsWith('yt:')) {
+    else if (q.startsWith('yt:')) {
       const term = query.substring(3).trim();
       if (term.length > 0) {
         allCommands.push({
@@ -656,15 +656,10 @@ export default function App() {
           action: () => invoke('search_web', { query: `https://www.youtube.com/results?search_query=${encodeURIComponent(term)}` }).catch(console.error),
         });
       }
-    } else if (query.length > 0 && !q.includes(':')) {
-      allCommands.push({
-        name: `Search the web for "${query}"`,
-        action: () => invoke('search_web', { query }).catch(console.error),
-      });
     }
 
     // Open link directly if query starts with http or https
-    if (q.startsWith('http://') || q.startsWith('https://')) {
+    else if (q.startsWith('http://') || q.startsWith('https://')) {
       allCommands.push({
         name: `Open link "${query}"`,
         action: () => invoke('open_link', { url: query }).catch(console.error),
@@ -672,7 +667,7 @@ export default function App() {
     }
 
     // Settings - autostart commands
-    if (query.startsWith('toggle') && !query.includes('autostart') && !query.includes('start')) {
+    else if (query.startsWith('toggle') && !query.includes('autostart') && !query.includes('start')) {
       allCommands.push({
         name: `Toggle autostart`,
         action: () => invoke('settings_toggle_autostart', {}).catch(console.error),
@@ -686,42 +681,55 @@ export default function App() {
     }
 
     // System restart command 
-    if (q.startsWith('restart') || q.startsWith('reboot')) {
+    else if (q.startsWith('restart') || q.startsWith('reboot')) {
       allCommands.push({
         name: `Restart system`,
         action: () => invoke('restart_system', {}).catch(console.error),
       });
     }
     // System shutdown command 
-    if (q.startsWith('shutdown') || q.startsWith('power off')) {
+    else if (q.startsWith('shutdown') || q.startsWith('power off')) {
       allCommands.push({
         name: `Shutdown system`,
         action: () => invoke('shutdown_system', {}).catch(console.error),
       });
     }
     // System lock command 
-    if (q.startsWith('lock') || q.startsWith('disconnect')) {
+    else if (q.startsWith('lock') || q.startsWith('disconnect')) {
       allCommands.push({
         name: `Lock system (disconnect)`,
         action: () => invoke('lock_system', {}).catch(console.error),
       });
     }
 
-    // Snippet insert command
-    snippets.forEach(({ name, content }) => {
-      if (name.toLowerCase().includes(q)) {
-        allCommands.push({
-          name: `Insert snippet "${name}"`,
-          action: () => {
-            navigator.clipboard.writeText(content).catch(console.error);
-            setQuery('');
-          },
-        });
-      }
-    });
+
+    // Empty trash command
+    else if (q.startsWith('empty') || q.startsWith('trash')) {
+      allCommands.push({
+        name: `Empty trash`,
+        action: () => invoke('empty_trash', {}).catch(console.error),
+      });
+    }
+
+    // Run shortcut on macos
+    else if (q.startsWith('shortcut')) {
+      let queryT = query.replace('shortcut', '').trim();
+      allCommands.push({
+        name: `Run shortcut "${queryT}"`,
+        action: () => invoke('run_macos_shortcut', { name: queryT }).catch(console.error),
+      });
+    } else if (q.startsWith('run shortcut')) {
+      let queryT = query.replace('run shortcut', '').trim();
+      allCommands.push({
+        name: `Run shortcut "${queryT}"`,
+        action: () => invoke('run_macos_shortcut', { name: queryT }).catch(console.error),
+      });
+    }
+
+
 
     // File search command
-    if (q.includes('search file')) {
+    else if (q.includes('search file')) {
       const term = query.toLowerCase().split('search file')[1]?.trim();
       if (term && term.length > 0) {
         allCommands.push({
@@ -745,6 +753,13 @@ export default function App() {
       }
     }
 
+    else {
+      allCommands.push({
+        name: `Search the web for "${query}"`,
+        action: () => invoke('search_web', { query }).catch(console.error),
+      });
+    }
+
     // Filter commands by substring match, score by index of query in name (lower index better)
     const matchedCommands = allCommands
       .map(cmd => {
@@ -754,6 +769,19 @@ export default function App() {
       .filter(({ idx }) => idx !== -1)
       .sort((a, b) => a.idx - b.idx)
       .map(({ cmd }) => cmd);
+
+    // TODO: Snippet insert command
+    // snippets.forEach(({ name, content }) => {
+    //   if (name.toLowerCase().includes(q)) {
+    //     allCommands.push({
+    //       name: `Insert snippet "${name}"`,
+    //       action: () => {
+    //         navigator.clipboard.writeText(content).catch(console.error);
+    //         setQuery('');
+    //       },
+    //     });
+    //   }
+    // });
 
     return matchedCommands;
   }

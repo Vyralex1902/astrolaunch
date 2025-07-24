@@ -39,6 +39,7 @@ A spotlight-like app. The objective will be to compete with raycast.
 - Shutdown system
 - Restart system
 - Lock/Disconnect system
+- Empty trash
 
 #### Some of these still don't work.
 
